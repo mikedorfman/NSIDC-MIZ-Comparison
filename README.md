@@ -34,10 +34,10 @@ You must have git and Anaconda/Miniconda installed as well as sufficient storage
 ## Example Usage
 
 **Example usage to be built out further once comparison script is assembled**
-To compare products between 20200101 and 20200102, generating all output;
-`python compare_products.py 20200101 20200102`
-To compare products between 20200101 and 20200102, generating csv only;
-`python compare_products.py 20200101 20200102 --output csv`
+To compare products between 20200101 and 20200102, generating all output;  
+`python compare_products.py 20200101 20200102`  
+To compare products between 20200101 and 20200102, generating csv only;  
+`python compare_products.py 20200101 20200102 --output csv`  
 
 Note - this comparison is designed to be run with the above-described datasets only - additional modifications will be necessary outside of comparing these two inputs (zipped shapefiles for USNIC MIZ product and netcdf files for NSIDC product).
 
