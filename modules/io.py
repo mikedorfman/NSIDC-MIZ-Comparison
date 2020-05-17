@@ -68,6 +68,7 @@ def download_nic_miz_range(start, end, hemi='south', local_dir=os.path.join("dat
             download_date += datetime.timedelta(days=1)
             continue
         print("Downloading %s" % ftp_name)
+        # TODO - check retrieve_status
         retrieve_status = urllib.request.urlretrieve(ftp_name, file_name)
         download_date += datetime.timedelta(days=1)
     return files
