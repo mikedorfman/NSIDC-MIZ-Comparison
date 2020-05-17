@@ -5,7 +5,7 @@ The Marginal Ice Zone is defined as the area in the Arctic and the Antarctic whe
 
 ## Project Description
 
-There are several products that describe the extent of the MIZ; this project will focus on comparing the National Snow and Ice Data Center's passive-microwave MIZ CDR to the US National Ice Center's operational MIZ product.  The primary goal of this comparison is to quantify how these two products differ in both a time-static comparison of the two products in recent months as well as a time-series comparison of their differences.  While data is available for both the northern and southern hemisphere, this project will focus on comparing southern hemisphere data.  This repository provides a method of reproducing the output from this comparison as well as providing an easy way to run this comparison for specified days.  
+There are several products that describe the extent of the MIZ; this project will focus on comparing the National Snow and Ice Data Center's (NSIDC) passive-microwave MIZ CDR to the US National Ice Center's (USNIC) operational MIZ product.  The primary goal of this comparison is to quantify how these two products differ in both a time-static comparison of the two products in recent months as well as a time-series comparison of their differences.  While data is available for both the northern and southern hemisphere, this project will focus on comparing southern hemisphere data.  This repository provides a method of reproducing the output from this comparison as well as providing an easy way to run this comparison for specified days.  
 
 ## U.S. NIC Operational MIZ Product
 *Description to be added*
