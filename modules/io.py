@@ -7,7 +7,7 @@ import os
 import urllib.request
 
 
-def download_cdr_miz_range(start, end, hemi='south', local_dir=os.path.join("data", "cdr"), no_clobber=True,
+def download_cdr_miz_range(start, end, hemi='south', local_dir=os.path.join("data", "inputs", "cdr"), no_clobber=True,
                            verbose=False):
     '''
     Downloads a time range of MIZ ftp files.  Inclusive of start and end times.
@@ -40,7 +40,7 @@ def download_cdr_miz_range(start, end, hemi='south', local_dir=os.path.join("dat
     return files
 
 
-def download_nic_miz_range(start, end, hemi='south', local_dir=os.path.join("data", "nic"), no_clobber=True,
+def download_nic_miz_range(start, end, hemi='south', local_dir=os.path.join("data", "inputs", "nic"), no_clobber=True,
                            verbose=False):
     '''
     Downloads a time range of MIZ ftp files.  Inclusive of start and end times.
