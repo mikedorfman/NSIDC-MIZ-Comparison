@@ -1,0 +1,16 @@
+name: nsidc-miz-analysis
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.7
+  - pip
+  - basemap
+  - geopandas
+  - joblib
+  - matplotlib
+  - netcdf4
+  - numpy
+  - pandas
+  - rasterio

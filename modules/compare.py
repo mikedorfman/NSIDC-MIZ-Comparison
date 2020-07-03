@@ -2,68 +2,135 @@
 A module that contains functions to help compare MIZ products.
 '''
 
-import datetime
-
-import geopandas as gpd
-import netCDF4 as nc
 import numpy as np
-import rasterio
-import rasterio.features
+import pandas as pd
 
-import os
+from . import io
 
-def nic_file_to_grid(nic_file):
-    '''
-    Load a NIC file from a provided path and rasterize as a numpy array
-    :param nic_file: String path of the NIC shapefile
-    :return: numpy array
-    '''
-    # basic check to make sure we're dealing with a zipfile
-    assert os.path.splitext(nic_file)[1] == ".zip"
+# Each grid cell is 25 km2
+GRID_CELL_AREA = 25*25
 
-    icecode_mapping = {
-        "CT18": .18,
-        "CT81": .8
-    }
 
-    gdf = gpd.read_file("zip://" + nic_file)
+def median_cdr(thresh, start, end, folder, hemisphere):
+    """
+    Return the median CDR grid values between the provided dates and at the specified threshold
+    :param thresh: Threshold for median sea ice
+    :param start: Start date
+    :param end: End date
+    :param folder: Folder to look for data
+    :param hemisphere: Hemisphere
+    :return:
+    """
+    return _median_grid(io.get_cdr, thresh, start, end, folder, hemisphere)
 
-    # From the cdr netcdf
-    # TODO - pass this into the function based on the netcdf vals
-    southern_view_crs = "+proj=stere +lat_0=-90 +lat_ts=-70 +lon_0=0 +k=1 +x_0=0 +y_0=0 +a=6378273 +b=6356889.449 +units=m +no_defs"
-    gdf = gdf.to_crs(southern_view_crs)
-    shapes = ((geom, icecode_mapping[value]) for geom, value in zip(gdf.geometry, gdf.ICECODE))
 
-    # From the cdr netcdf
-    # TODO - pass this into the function based on the netcdf vals
-    geo_transform = rasterio.transform.from_origin(-3950000.0, 4350000.0, 25000.0, 25000.0)
-    return rasterio.features.rasterize(shapes=shapes,
-                                       transform=geo_transform,
-                                       fill=-1,
-                                       # From the cdr netcdf
-                                       # TODO - pass this into the function based on the netcdf vals
-                                       out_shape=(332, 316))
+def median_nic(thresh, start, end, folder, hemisphere):
+    """
+    Return the median NIC grid values between the provided dates and at the specified threshold
+    :param thresh: Threshold for median sea ice
+    :param start: Start date
+    :param end: End date
+    :param folder: Folder to look for data
+    :param hemisphere: Hemisphere
+    :return:
+    """
+    return _median_grid(io.get_nic, thresh, start, end, folder, hemisphere)
 
-def cdr_file_to_grid(cdr_file_path):
-    '''
-    Load a CDR grid into a numpy array, returning both the sea ice concentration, coordinates and time
-    :param cdr_file_path: String path of the CDR netCDF
-    :return: nic concentration array, latitude array, longitude array, datetime
-    '''
-    cdr_file = nc.Dataset(cdr_file_path)
 
-    ds_squeezed = np.squeeze(cdr_file.variables['seaice_conc_cdr'][:])
-    lats_squeezed = np.squeeze(cdr_file.variables['latitude'][:])
-    lons_squeezed = np.squeeze(cdr_file.variables['longitude'][:])
+def _median_grid(retrieval_func, thresh, start, end, folder, hemisphere):
+    """
+    Return the median grid values between the provided dates and at the specified threshold
+    :param retrieval_func: Function that is called with date, folder and hemisphere to retrieve grid
+    :param thresh: Threshold for median sea ice
+    :param start: Start date
+    :param end: End date
+    :param folder: Folder to look for data
+    :param hemisphere: Hemisphere
+    :return:
+    """
+    sum_grid = None
+    counter = 0
 
-    # Retrieve the date - days since 1601-01-01 00:00:00
-    epoch = datetime.datetime(1601, 1, 1)
+    # should always be 0.5 - we're looking for qualifying ice concentrations 50% of the time or greater.
+    median_percentage = 0.5
 
-    # np.squeeze should squeeze this array down to a single value
-    days_since_epoch = np.asscalar(np.squeeze(cdr_file.variables['time']))
+    # This one loops on a daily frequency
+    for date in pd.date_range(start=start, end=end):
+        try:
+            grid = retrieval_func(date, folder, hemisphere)
+            mask = np.where(grid >= thresh, True, False)
 
-    date = epoch + datetime.timedelta(days=days_since_epoch)
+            # Either add onto the sum grid or make the sum grid the mask, updated as int type (instead of bool)
+            sum_grid = sum_grid + mask if sum_grid is not None else 1*mask
+            counter += 1
+        except Exception as e:
+            print(f"Could not run {date} because {e}; continuing")
 
-    # Explicitly calling this since there appears to be a memory leak somewhere...
-    cdr_file.close()
-    return ds_squeezed, lats_squeezed, lons_squeezed, date
+    percent_hit_grid = sum_grid / counter
+
+    return np.where(percent_hit_grid >= median_percentage, True, False)
+
+
+def calculate_ice_area(cdr_grid, nic_grid, min_sic_nic, max_sic_nic, min_sic_cdr, max_sic_cdr, verbose=False):
+    """
+    Calculate the total ice area between two thresholds
+    :param cdr_grid: np array - cdr data array
+    :param nic_grid: np array - nic data array - same shape as cdr_grid
+    :param min_sic_nic: float - 0 to 1 - fractional percentage SIC lower threshold for nic data
+    :param max_sic_nic: float - 0 to 1 - fractional percentage SIC upper threshold for nic data
+    :param min_sic_cdr: float - 0 to 1 - fractional percentage SIC lower threshold for cdr data
+    :param max_sic_cdr: float - 0 to 1 - fractional percentage SIC upper threshold for cdr data
+    :param verbose: bool - Add additional output
+    :return:
+    """
+
+    # We need a lower threshold that is less than an upper threshold
+    assert min_sic_nic <= max_sic_nic
+    assert min_sic_cdr <= max_sic_cdr
+
+    cdr_cell_count = np.where((cdr_grid >= min_sic_cdr) & (cdr_grid <= max_sic_cdr) & (cdr_grid >= 0), True, False).sum()
+    nic_cell_count = np.where((nic_grid >= min_sic_nic) & (nic_grid <= max_sic_nic) & (cdr_grid >= 0), True, False).sum()
+
+    if verbose:
+        cdr_initial_count = np.where((cdr_grid > 0), True, False).sum()
+        nic_initial_count = np.where((nic_grid > 0), True, False).sum()
+
+        print(f"CDR went from {cdr_initial_count} unfiltered to {cdr_cell_count}")
+        print(f"NIC went from {nic_initial_count} unfiltered to {nic_cell_count}")
+
+    cdr_area = cdr_cell_count * GRID_CELL_AREA
+    nic_area = nic_cell_count * GRID_CELL_AREA
+
+    return cdr_area, nic_area
+
+
+def calculate_ice_footprint_diff(nic_grid, min_nic, max_nic, cdr_grid, min_cdr, max_cdr):
+    """
+    First, calculate a boolean array between the min and max thresholds for both nic grids and cdr grids.  Then
+    create an array that represents the following -
+        - value "1" - nic and cdr both True
+        - value "2" - nic and cdr both False
+        - value "3" - nic True and cdr False
+        - value "4" - cdr True and nic False
+
+    :param nic_grid: numpy arr - nic data
+    :param min_nic: float - min nic threshold
+    :param max_nic: float - max nic threshold
+    :param cdr_grid: numpy arr - cdr data
+    :param min_cdr: float - min cdr threshold
+    :param max_cdr: float - max cdr threshold
+    :return: numpy array as described above
+    """
+
+    overlap_grid = np.zeros_like(cdr_grid)
+
+    # Threshold the grids
+    cdr_grid = np.where((cdr_grid >= min_cdr) & (cdr_grid <= max_cdr), True, False)
+    nic_grid = np.where((nic_grid >= min_nic) & (nic_grid <= max_nic), True, False)
+
+    # Create a new grid and populate
+    overlap_grid[(nic_grid & cdr_grid)] = 1
+    overlap_grid[(nic_grid & ~cdr_grid)] = 2
+    overlap_grid[(~nic_grid & cdr_grid)] = 3
+    overlap_grid[(~nic_grid & ~cdr_grid)] = 4
+    return overlap_grid

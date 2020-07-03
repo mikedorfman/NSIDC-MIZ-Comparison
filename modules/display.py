@@ -4,12 +4,14 @@ A module that contains functions to display MIZ data.
 
 import glob
 import os
+import pathlib
 
+from matplotlib import colors
 import matplotlib.image as mplimg
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib import animation
-import pathlib
+import numpy as np
 
 # These are shared across functions in this module and must remain the same
 FIG_DPI = 300
@@ -17,37 +19,55 @@ NIC_COLOR = 'blue'
 CDR_COLOR = 'red'
 ALPHA = .2
 
-def create_basemap_plot(lats, lons, cdr, nic, save=None, show=True):
-    '''
-    Create a basemap plot of the cdr and nic data with spstere projection.
 
-    TODO; make this function more generalized
-    :param lats: Numpy array of lats (matches other array dimensions)
-    :param lons: Numpy array of lons (matches other array dimensions)
-    :param cdr: CDR array (matches other array dimensions)
-    :param nic: NIC array (matches other array dimensions)
-    :param save: Location to save png, bypassing save if None
-    :param show: Display the plot
-    :return:
-    '''
-    bounding_lat = -41.5
-    # We only want the boolean "True" values contoured...this is the only way I could figure how to do that
-    levels = [0.5, 1.5]
+def create_basemap_plot(title, lats, lons, meta, grid, save=None, show=True, legend=True):
+    fig, ax = plt.subplots(dpi=300)
 
-    fig, ax = plt.subplots(dpi=FIG_DPI)
+    height = meta.grid_boundary_top_projected_y - meta.grid_boundary_bottom_projected_y
+    width = meta.grid_boundary_right_projected_x - meta.grid_boundary_left_projected_x
+
+    # I don't understand why basemap isn't respecting the bounding lat.  Data is cut off in the
+    # north if we don't adjust the standard parallel.
+    standard_parallel = 20 if meta.standard_parallel == 70 else meta.standard_parallel
 
     m = Basemap(
         ax=ax,
-        projection='spstere', boundinglat=bounding_lat, lon_0=180,
-        resolution='i', round=True
+        projection='stere',
+        lat_0=meta.latitude_of_projection_origin,
+        lat_ts=standard_parallel,
+        lon_0=meta.longitude_of_projection_origin,
+        boundinglat=0,
+        resolution='i',
+        round=True,
+        height=height,
+        width=width
     )
 
-    x, y = m(lons, lats)
-
     m.drawcoastlines(linewidth=.25)
+    m.drawmeridians(np.arange(0, 360, 30), linewidth=.1)
+    m.drawparallels(np.arange(-90, 90, 10), linewidth=.1)
+    x, y = m(lons, lats)
+    for gr in grid:
+        if 'color' in gr.keys():
+            cmap = colors.ListedColormap(gr['color'])
+            cmap.set_bad(alpha=0)
+        else:
+            # Choose a good cmap for ice
+            cmap = plt.cm.Blues
 
-    m.contourf(x, y, cdr, levels, colors=CDR_COLOR, alpha=ALPHA)
-    m.contourf(x, y, nic, levels, colors=NIC_COLOR, alpha=ALPHA)
+        plt.imshow(np.ma.masked_where(gr['grid'] <= 0, gr['grid']),
+                   cmap=cmap,
+                   vmin=0,
+                   vmax=1,
+                   extent=(x.min(), x.max(), y.min(), y.max()))
+    if 'color' in grid[0].keys() and legend:
+        plt.legend([plt.Rectangle((0, 0), 1, .1, fc=gr['color'], alpha=.5) for gr in grid],
+                   [gr['legend_label'] for gr in grid], loc='lower left', ncol=2)
+    else:
+        cbar = plt.colorbar()
+        cbar.set_label('Sea Ice Concentration')
+
+    ax.set_title(title)
 
     if save is not None:
         os.makedirs(os.path.dirname(save), exist_ok=True)
@@ -56,7 +76,6 @@ def create_basemap_plot(lats, lons, cdr, nic, save=None, show=True):
     if show:
         plt.show()
 
-    plt.close(fig)
 
 def images_to_animation(image_folder, save_path):
     '''
@@ -64,15 +83,10 @@ def images_to_animation(image_folder, save_path):
     :param folder: Folder to glob images from
     :return:
     '''
-    files = glob.glob(os.path.join(image_folder, "*.png"))
 
+    files = glob.glob(os.path.join(image_folder, "*.png"))
     fig, ax = plt.subplots(dpi=FIG_DPI)
     plt.axis('off')
-
-    plt.legend([plt.Rectangle((0, 0), 1, 1, fc=CDR_COLOR, alpha=ALPHA),
-                plt.Rectangle((0, 0), 1, 1, fc=NIC_COLOR, alpha=ALPHA),
-                plt.Rectangle((0, 0), 1, 1, fc='purple', alpha=ALPHA)],
-               ['CDR', 'NIC', 'Overlap'], loc='lower left')
 
     img = mplimg.imread(files[0])
     imshow = plt.imshow(img, aspect='equal')
@@ -80,12 +94,11 @@ def images_to_animation(image_folder, save_path):
     def animate(i):
         img = mplimg.imread(files[i])
         imshow.set_data(img)
-        ax.set_title(f"Sea Ice Concentration from 20%-100%\n {os.path.basename(files[i])[:8]}")
 
     ani = animation.FuncAnimation(fig, animate, len(files), interval=100)
 
     # Make sure our save path exists
-    pathlib.Path(os.path.basename(save_path)).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(os.path.dirname(save_path)).mkdir(parents=True, exist_ok=True)
     ani.save(save_path)
 
 
