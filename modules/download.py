@@ -40,14 +40,14 @@ def cdr_to_np(start, end, cdr_input_folder, clobber=False, hemisphere='south', v
     check_hemisphere(hemisphere)
     analyzed_dates = pd.date_range(start=start, end=end)
     Parallel(n_jobs=-1, backend='threading')(delayed(_cdr_to_np_grid)
-                                             (dt, cdr_input_folder, hemisphere, clobber, verbose)
-                                             for dt in analyzed_dates)
+                                             (date, cdr_input_folder, hemisphere, clobber, verbose)
+                                             for date in analyzed_dates)
 
 
-def datetime_to_cdr_fname(dt, hemisphere):
+def datetime_to_cdr_fname(date, hemisphere):
     """
     Generate a CDR FTP path given the datetime hemisphere
-    :param dt: datetime - desired datetime for file
+    :param date: datetime - desired datetime for file
     :param hemisphere: string - 'south' or 'north' - hemisphere to generate the filename for
     :return:
     """
@@ -55,49 +55,49 @@ def datetime_to_cdr_fname(dt, hemisphere):
     # Before this date, files had a different naming convention and live in a different spot
     cutoff = datetime.datetime(2019, 1, 1)
     hemisphere_letter = hemisphere[0]  # "n" for north, "s" for south
-    if dt < cutoff:
-        ftp_dir = f"ftp://sidads.colorado.edu/pub/DATASETS/NOAA/G02202_V3/{hemisphere}/daily/{dt:%Y}/"
-        ftp_file = f"seaice_conc_daily_{hemisphere_letter}h_f17_{dt:%Y%m%d}_v03r01.nc"
+    if date < cutoff:
+        ftp_dir = f"ftp://sidads.colorado.edu/pub/DATASETS/NOAA/G02202_V3/{hemisphere}/daily/{date:%Y}/"
+        ftp_file = f"seaice_conc_daily_{hemisphere_letter}h_f17_{date:%Y%m%d}_v03r01.nc"
     else:
-        ftp_dir = f"ftp://sidads.colorado.edu/pub/DATASETS/NOAA/G10016/{hemisphere}/daily/{dt:%Y}/"
-        ftp_file = f"seaice_conc_daily_icdr_{hemisphere_letter}h_f18_{dt:%Y%m%d}_v01r00.nc"
+        ftp_dir = f"ftp://sidads.colorado.edu/pub/DATASETS/NOAA/G10016/{hemisphere}/daily/{date:%Y}/"
+        ftp_file = f"seaice_conc_daily_icdr_{hemisphere_letter}h_f18_{date:%Y%m%d}_v01r00.nc"
     return ftp_dir, ftp_file
 
 
-def datetime_to_nic_fname(dt, hemisphere):
+def datetime_to_nic_fname(date, hemisphere):
     """
     Generate an NIC FTP path given the datetime hemisphere
-    :param dt: datetime - desired datetime for file
+    :param date: datetime - desired datetime for file
     :param hemisphere: string - 'south' or 'north' - hemisphere to generate the filename for
     :return:
     """
     check_hemisphere(hemisphere)
     hemisphere_letter = hemisphere[0]  # "n" for north, "s" for south
-    ftp_dir = f"ftp://sidads.colorado.edu/DATASETS/NOAA/G10017/{hemisphere}/{dt:%Y}/"
-    ftp_file = f"nic_miz{dt:%Y%j}{hemisphere_letter}c_pl_a.zip"
+    ftp_dir = f"ftp://sidads.colorado.edu/DATASETS/NOAA/G10017/{hemisphere}/{date:%Y}/"
+    ftp_file = f"nic_miz{date:%Y%j}{hemisphere_letter}c_pl_a.zip"
     return ftp_dir, ftp_file
 
 
-def datetime_to_cdr_fname_grid(dt, hemisphere):
+def datetime_to_cdr_fname_grid(date, hemisphere):
     """
     Generate a numpy grid filename given the datetime hemisphere.  This grid is used to speed up access to this data.
-    :param dt: datetime - desired datetime for file
+    :param date: datetime - desired datetime for file
     :param hemisphere: string - 'south' or 'north' - hemisphere to generate the filename for
     :return:
     """
     check_hemisphere(hemisphere)
-    return f'{dt:%Y%m%d}_{hemisphere}_cdr.npy'
+    return f'{date:%Y%m%d}_{hemisphere}_cdr.npy'
 
 
-def datetime_to_nic_fname_grid(dt, hemisphere):
+def datetime_to_nic_fname_grid(date, hemisphere):
     """
     Generate a numpy grid filename given the datetime hemisphere.  This grid is used to speed up access to this data.
-    :param dt: datetime - desired datetime for file
+    :param date: datetime - desired datetime for file
     :param hemisphere: string - 'south' or 'north' - hemisphere to generate the filename for
     :return:
     """
     check_hemisphere(hemisphere)
-    return f'{dt:%Y%m%d}_{hemisphere}_nic.npy'
+    return f'{date:%Y%m%d}_{hemisphere}_nic.npy'
 
 
 def download_range(sftp_formatter, start, end, local_dir, hemisphere='south', no_clobber=True, verbose=False):
@@ -133,9 +133,9 @@ def download_range(sftp_formatter, start, end, local_dir, hemisphere='south', no
             if verbose:
                 print("Downloading %s" % ftp_full)
             urllib.request.urlretrieve(ftp_full, file_full)
-        except Exception as e:
+        except Exception as exc:
             if verbose:
-                print(f"Could not download {ftp_full} to {file_full} for some reason; {e}")
+                print(f"Could not download {ftp_full} to {file_full} for some reason; {exc}")
 
 
 def download_cdr_miz_range(*args, **kwargs):
@@ -158,30 +158,30 @@ def download_nic_miz_range(*args, **kwargs):
     download_range(datetime_to_nic_fname, *args, **kwargs)
 
 
-def get_nic(dt, dirname, hemisphere):
+def get_nic(date, dirname, hemisphere):
     """
     Loads an NIC array stored on disk to a numpy array in memory.
-    :param dt: datetime - datetime to load
+    :param date: datetime - datetime to load
     :param dirname: string - Directory to search for files
     :param hemisphere: str - hemisphere - either north for the arctic or south for antarctica
     :return:
     """
     check_hemisphere(hemisphere)
-    fname = datetime_to_nic_fname_grid(dt, hemisphere)
+    fname = datetime_to_nic_fname_grid(date, hemisphere)
     full_fname = os.path.join(dirname, fname)
     return np.load(full_fname)
 
 
-def get_cdr(dt, dirname, hemisphere):
+def get_cdr(date, dirname, hemisphere):
     """
     Loads a CDR numpy array stored on disk to a numpy array in memory.
-    :param dt: datetime - datetime to load
+    :param date: datetime - datetime to load
     :param dirname: string - Directory to search for files
     :param hemisphere: str - hemisphere - either north for the arctic or south for antarctica
     :return:
     """
     check_hemisphere(hemisphere)
-    fname = datetime_to_cdr_fname_grid(dt, hemisphere)
+    fname = datetime_to_cdr_fname_grid(date, hemisphere)
     full_fname = os.path.join(dirname, fname)
     return np.load(full_fname)
 
@@ -221,14 +221,14 @@ def nic_to_np(start, end, nic_input_folder, cdr_meta, shape, clobber=False, hemi
     check_hemisphere(hemisphere)
     analyzed_dates = pd.date_range(start=start, end=end)
     Parallel(n_jobs=-1, backend='threading')(delayed(_nic_to_np_grid)
-                                             (dt, nic_input_folder, hemisphere, clobber, cdr_meta, shape, verbose)
-                                             for dt in analyzed_dates)
+                                             (date, nic_input_folder, hemisphere, clobber, cdr_meta, shape, verbose)
+                                             for date in analyzed_dates)
 
 
-def _cdr_to_np_grid(dt, input_folder, hemisphere, clobber, verbose):
+def _cdr_to_np_grid(date, input_folder, hemisphere, clobber, verbose):
     """
     Loads the CDR netcdf data into memory then saves to disk as a numpy array for easy access.
-    :param dt: datetime - Date to process
+    :param date: datetime - Date to process
     :param input_folder: string - Input folder that holds CDR netcdf files and numpy files
     :param hemisphere: string - 'south' or 'north' - hemisphere to process
     :param clobber: bool - overwrite output
@@ -237,11 +237,11 @@ def _cdr_to_np_grid(dt, input_folder, hemisphere, clobber, verbose):
     """
     check_hemisphere(hemisphere)
     if verbose:
-        print(f"Running {dt} for cdr")
+        print(f"Running {date} for cdr")
     try:
-        grid_fname = os.path.join(input_folder, datetime_to_cdr_fname_grid(dt, hemisphere))
+        grid_fname = os.path.join(input_folder, datetime_to_cdr_fname_grid(date, hemisphere))
         if clobber or not os.path.exists(grid_fname):
-            _, cdr_fname = datetime_to_cdr_fname(dt, hemisphere)
+            _, cdr_fname = datetime_to_cdr_fname(date, hemisphere)
             cdr_file = nc.Dataset(os.path.join(input_folder, cdr_fname), 'r')
             grid = np.squeeze(cdr_file.variables['seaice_conc_cdr'][:])
 
@@ -250,15 +250,15 @@ def _cdr_to_np_grid(dt, input_folder, hemisphere, clobber, verbose):
             grid[grid < 0] = 0
 
             np.save(grid_fname, grid)
-    except Exception as e:
+    except Exception as exc:
         if verbose:
-            print(f"COULDN'T RUN {dt} BECAUSE {e}")
+            print(f"COULDN'T RUN {date} BECAUSE {exc}")
 
 
-def _nic_to_np_grid(dt, input_folder, hemisphere, clobber, cdr_meta, shape, verbose):
+def _nic_to_np_grid(date, input_folder, hemisphere, clobber, cdr_meta, shape, verbose):
     """
     Rasterizes an NIC shapefile input and saves to disk as a numpy array.
-    :param dt: datetime - Date to process
+    :param date: datetime - Date to process
     :param input_folder: string - Input folder to find NIC zipped shapefiles
     :param hemisphere: string - 'south' or 'north' - hemisphere to process
     :param clobber: bool - overwrite output
@@ -268,12 +268,12 @@ def _nic_to_np_grid(dt, input_folder, hemisphere, clobber, cdr_meta, shape, verb
     """
     check_hemisphere(hemisphere)
     if verbose:
-        print(f"Running {dt} for nic")
+        print(f"Running {date} for nic")
 
     try:
-        grid_fname = os.path.join(input_folder, datetime_to_nic_fname_grid(dt, hemisphere))
+        grid_fname = os.path.join(input_folder, datetime_to_nic_fname_grid(date, hemisphere))
         if clobber or not os.path.exists(grid_fname):
-            _, nic_fname = datetime_to_nic_fname(dt, hemisphere)
+            _, nic_fname = datetime_to_nic_fname(date, hemisphere)
             nic_full_fname = os.path.join(input_folder, nic_fname)
 
             # basic check to make sure we're dealing with a zipfile
@@ -309,6 +309,6 @@ def _nic_to_np_grid(dt, input_folder, hemisphere, clobber, cdr_meta, shape, verb
                                                out_shape=shape)
 
             np.save(grid_fname, grid)
-    except Exception as e:
+    except Exception as exc:
         if verbose:
-            print(f"COULDN'T RUN {dt} BECAUSE {e}")
+            print(f"COULDN'T RUN {date} BECAUSE {exc}")

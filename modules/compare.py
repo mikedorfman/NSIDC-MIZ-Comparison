@@ -5,7 +5,7 @@ A module that contains functions to help compare MIZ products.
 import numpy as np
 import pandas as pd
 
-from . import io
+import download as dwn
 
 # Each grid cell is 25 km2
 GRID_CELL_AREA = 25*25
@@ -21,7 +21,7 @@ def median_cdr(thresh, start, end, folder, hemisphere):
     :param hemisphere: Hemisphere
     :return:
     """
-    return _median_grid(io.get_cdr, thresh, start, end, folder, hemisphere)
+    return _median_grid(dwn.get_cdr, thresh, start, end, folder, hemisphere)
 
 
 def median_nic(thresh, start, end, folder, hemisphere):
@@ -34,7 +34,7 @@ def median_nic(thresh, start, end, folder, hemisphere):
     :param hemisphere: Hemisphere
     :return:
     """
-    return _median_grid(io.get_nic, thresh, start, end, folder, hemisphere)
+    return _median_grid(dwn.get_nic, thresh, start, end, folder, hemisphere)
 
 
 def _median_grid(retrieval_func, thresh, start, end, folder, hemisphere):
@@ -63,8 +63,8 @@ def _median_grid(retrieval_func, thresh, start, end, folder, hemisphere):
             # Either add onto the sum grid or make the sum grid the mask, updated as int type (instead of bool)
             sum_grid = sum_grid + mask if sum_grid is not None else 1*mask
             counter += 1
-        except Exception as e:
-            print(f"Could not run {date} because {e}; continuing")
+        except Exception as exc:
+            print(f"Could not run {date} because {exc}; continuing")
 
     percent_hit_grid = sum_grid / counter
 
@@ -88,8 +88,12 @@ def calculate_ice_area(cdr_grid, nic_grid, min_sic_nic, max_sic_nic, min_sic_cdr
     assert min_sic_nic <= max_sic_nic
     assert min_sic_cdr <= max_sic_cdr
 
-    cdr_cell_count = np.where((cdr_grid >= min_sic_cdr) & (cdr_grid <= max_sic_cdr) & (cdr_grid >= 0), True, False).sum()
-    nic_cell_count = np.where((nic_grid >= min_sic_nic) & (nic_grid <= max_sic_nic) & (cdr_grid >= 0), True, False).sum()
+    cdr_cell_count = np.where((cdr_grid >= min_sic_cdr) &
+                              (cdr_grid <= max_sic_cdr) &
+                              (cdr_grid >= 0), True, False).sum()
+    nic_cell_count = np.where((nic_grid >= min_sic_nic) &
+                              (nic_grid <= max_sic_nic) &
+                              (cdr_grid >= 0), True, False).sum()
 
     if verbose:
         cdr_initial_count = np.where((cdr_grid > 0), True, False).sum()
