@@ -73,9 +73,14 @@ def main():
                         default=0.05, help='The sea ice concentration interval to use when calculating statistics.')
 
     parser.add_argument('--hemisphere',
-                        choices=['Antarctic', 'Arctic'], default='Antarctic', help='The hemisphere to analyze.')
+                        choices=['north', 'south'], default='south', help='The hemisphere to analyze.')
     parser.add_argument('--verbose', action='store_true', help='Increase verbosity.')
     args = parser.parse_args()
+
+    if args.hemisphere == "north":
+        hemi_folder = "arctic"
+    else:
+        hemi_folder = "antarctic"
 
     if args.start >= args.end:
         raise argparse.ArgumentTypeError(f"Start {args.start} is greater than or equal to end {args.end}!")
@@ -90,8 +95,8 @@ def main():
     days = pd.date_range(start=args.start, end=args.end, closed="left")
 
     # First, make sure everything is downloaded and download files if necessary
-    cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='cdr')
-    nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='nic')
+    cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='cdr')
+    nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='nic')
 
     dwn.download_cdr_miz_range(args.start, args.end, cdr_input_folder, hemisphere=args.hemisphere, verbose=args.verbose)
     dwn.download_nic_miz_range(args.start, args.end, nic_input_folder, hemisphere=args.hemisphere, verbose=args.verbose)
@@ -134,10 +139,10 @@ def create_stats(days, args):
     :param args: argparse args (see help)
     :return:
     """
-    nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='nic')
-    cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='cdr')
+    nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='nic')
+    cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='cdr')
 
-    csv_out_path = OUTPUT_CSV_FOLDER_FMT.format(hemisphere=args.hemisphere, product='combined')
+    csv_out_path = OUTPUT_CSV_FOLDER_FMT.format(hemisphere=hemi_folder, product='combined')
     threshold_range = np.arange(args.thresh_lower, args.thresh_upper, args.thresh_interval)
 
     # 1 since we're calculating the difference between this threshold and 100% SIC
@@ -194,10 +199,10 @@ def create_daily_plots_combined(days, args):
     """
     for day in days:
         try:
-            nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='nic')
-            cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='cdr')
+            nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='nic')
+            cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='cdr')
 
-            output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=args.hemisphere, product='combined')
+            output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=hemi_folder, product='combined')
 
             cdr_grid = dwn.get_cdr(day, cdr_input_folder, args.hemisphere)
             nic_grid = dwn.get_nic(day, nic_input_folder, args.hemisphere)
@@ -231,8 +236,8 @@ def create_daily_plots(days, args):
     for day in days:
         try:
             if args.plot_cdr:
-                cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='cdr')
-                output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=args.hemisphere, product='cdr')
+                cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='cdr')
+                output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=hemi_folder, product='cdr')
 
                 cdr_grid = dwn.get_cdr(day, cdr_input_folder, args.hemisphere)
 
@@ -252,9 +257,9 @@ def create_daily_plots(days, args):
 
         try:
             if args.plot_nic:
-                nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='nic')
+                nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='nic')
 
-                output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=args.hemisphere, product='nic')
+                output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=hemi_folder, product='nic')
 
                 nic_grid = dwn.get_nic(day, nic_input_folder, args.hemisphere)
 
@@ -280,9 +285,9 @@ def create_median_plot(args):
     :param args:  argparse args (see help)
     :return:
     """
-    nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='nic')
-    cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=args.hemisphere, product='cdr')
-    output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=args.hemisphere, product='combined')
+    nic_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='nic')
+    cdr_input_folder = INPUT_FOLDER_FMT.format(hemisphere=hemi_folder, product='cdr')
+    output_folder = OUTPUT_PNG_FOLDER_FMT.format(hemisphere=hemi_folder, product='combined')
 
     freq = 'MS'
     last_day_of_month_offset = pd.offsets.MonthEnd(1)
