@@ -5,7 +5,7 @@ A module that contains functions to help compare MIZ products.
 import numpy as np
 import pandas as pd
 
-import download as dwn
+from . import download as dwn
 
 # Each grid cell is 25 km2
 GRID_CELL_AREA = 25*25

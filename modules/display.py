@@ -37,7 +37,7 @@ def create_basemap_plot(title, lats, lons, meta, grids, save=None, show=True, le
     :param legend: bool - Include a legend.  Legend information must also be in the grid dictionary.
     :return:
     """
-    fig, axis = plt.subplots(dpi=300, figsize=(7, 7))
+    fig, axis = plt.subplots(dpi=FIG_DPI, figsize=(7, 7))
 
     height = meta.grid_boundary_top_projected_y - meta.grid_boundary_bottom_projected_y
     width = meta.grid_boundary_right_projected_x - meta.grid_boundary_left_projected_x
@@ -106,11 +106,11 @@ def images_to_animation(image_folder, save_path):
     if not files:
         raise ValueError(f"Couldn't find any png files in {image_folder}")
 
-    fig, _ = plt.subplots(dpi=FIG_DPI)
+    fig, ax = plt.subplots(dpi=FIG_DPI)
     plt.axis('off')
 
     img = mplimg.imread(files[0])
-    imshow = plt.imshow(img, aspect='equal')
+    imshow = ax.imshow(img, aspect='equal')
 
     def animate(i):
         img = mplimg.imread(files[i])
@@ -121,6 +121,7 @@ def images_to_animation(image_folder, save_path):
     # Make sure our save path exists
     pathlib.Path(os.path.dirname(save_path)).mkdir(parents=True, exist_ok=True)
     ani.save(save_path)
+    plt.clf()
 
 
 def plot_hist(data):

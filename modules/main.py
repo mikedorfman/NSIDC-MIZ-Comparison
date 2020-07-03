@@ -13,7 +13,7 @@ import pandas as pd
 
 import compare
 import display
-import download as dwn
+from . import download as dwn
 
 data_dir = os.path.join(pathlib.Path(__file__).absolute().parent.parent, "data")
 

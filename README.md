@@ -1,4 +1,4 @@
-# National Snow and Ice Data Center Marginal Ice Zone Comparison
+#Edge of Antarctica; Looking Into Where Ice and Water Mix
 
 ## Project Overview
 The ice surrounding Antarctica is critical to understand for several reasons; it teams with sea life sheltering in the broken ice, it drives distinct weather patterns, and it impacts crucial trade routes for ships.  It’s also essential to study the changing state and annual cycles of sea ice as ice caps shrink in a warming climate.  For these reasons, among others, it's important we fully realize the extent of this floating ice.
@@ -57,6 +57,44 @@ You must have git and Anaconda/Miniconda installed as well as sufficient storage
       -  `python modules/main.py 20200130 20200220 --animate data/sout/outputs/combined/png` - Creates an mp4 animation of the files in the provided directory and saves the mp4 alongside those files.  Files are added to the animation in the default order which they appear in the filesystem.  Start time and end time are ignored since this is just grabbing the files in the provided folder.
     run `python modules/main.py --help` for more information.  You may also pass more than one flag at a time to generate multiple products.
 
+## Workflow
+The Jupyter Notebook follows the following workflow;
+ - For each day in the analysis:
+     - Download USNIC shapefile data from NSIDC FTP, skipping files that already exist.
+     - Download NetCDF CDR Data from NSIDC FTP, skipping files that already exist.
+     - Load CDR NetCDFs, extract the `seaice_conc_cdr` variable into a numpy array and save to disk as a .npy file.
+     - Load NIC data, rasterize to the same grid as the NIC data and save to disk as a .npy file.
+ 
+ - Generate daily view plots;
+     - For each day analyzed;
+         - Load the .npy file for NIC
+         - Load the .npy file for CDR
+         - Threshold based on desired sea ice concentration threshold
+         - Create basemap plot
+ 
+ - Calculate total-area-within-threshold data
+     - For each day analyzed;
+         - Load the .npy file for NIC
+         - Load the .npy file for CDR
+         - For each sea ice concentration threshold investigated
+             - Select the data that falls within this sea ice concentration threshold
+             - Calculate the total area this data represents
+             - Write to a pandas dataframe
+     - Save pandas dataframe to csv
+     - Plot subsets of that data
+     
+ - Calculate monthly median ice edge
+     - For each month to calculate
+         - Create a numpy array to hold the sea ice concentration sum information
+         - For each day within this month
+             - Create a boolean array representing data that is greater than this threshold as "True" and data that is less than this threshold as "False".
+             - Add the integer representation of this boolean array to the sum array.
+             - Iterate a counter
+         - Divide the sum array by the counter - this represents the percent time in this month this pixel was greater than the specified value.
+         - Create a boolean array where this sum/counter array is greater than 0.5.
+         - Run a numpy diff calculation on this boolean array to find the edge of this median.
+         - Plot the result. 
+ - Generate animations of the time series plots.
 ## Directory Structure
 
 * modules/ `Modules to assist in the comparison, display and download of files`
